@@ -1,1 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHAH COMMUNITY ❤️</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#f0f2f5;color:#222;
+ font-family:Arial,sans-serif;
+}
+header{
+ background:#fff;padding:16px;
+ text-align:center;border-bottom:1px solid #ddd;
+ position:sticky;top:0;z-index:2;
+}
+header h1{margin:0;color:#1877f2;font-size:24px}
+header p{margin:5px 0 0;color:#555}
+.container{max-width:600px;margin:20px auto;padding:12px}
+.card{
+ background:#fff;padding:18px;border-radius:12px;
+ margin-bottom:16px;box-shadow:0 2px 8px #0001;
+}
+input,textarea{
+ width:100%;padding:12px;margin:7px 0;
+ border:1px solid #ccc;border-radius:8px;font-size:16px;
+}
+textarea{min-height:100px;resize:vertical}
+button{
+ border:0;border-radius:8px;padding:12px;
+ background:#1877f2;color:#fff;font-size:15px;
+ font-weight:bold;cursor:pointer;margin:5px 0;
+}
+button.full{width:100%}
+button.secondary{background:#444}
+button.red{background:#c62828}
+.post{background:#fff;padding:16px;border-radius:12px;margin:12px 0}
+.post small{color:#777}
+#feed{margin-top:15px}
+#status{color:#1877f2;word-break:break-word}
+.hidden{display:none}
+</style>
+</head>
+<body>
 
+<header>
+<h1>SHAH COMMUNITY ❤️</h1>
+<p>Connect • Share • Grow</p>
+</header>
+
+<div class="container">
+
+<div class="card" id="authBox">
+<h2>Welcome ❤️</h2>
+<p>Create your account or login</p>
+
+<input id="email" type="email" placeholder="Email address">
+<input id="password" type="password" placeholder="Password">
+
+<button class="full" id="signupBtn">Sign Up</button>
+<button class="full secondary" id="loginBtn">Login</button>
+<button class="full" id="googleBtn">Continue with Google</button>
+
+<p id="status"></p>
+</div>
+
+<div class="card hidden" id="userBox">
+<h3 id="welcome"></h3>
+<button class="red" id="logoutBtn">Logout</button>
+</div>
+
+<div class="card hidden" id="createBox">
+<h3>Create Post ❤️</h3>
+<textarea id="postText" placeholder="What's on your mind?"></textarea>
+<button class="full" id="publishBtn">Publish Post</button>
+<p id="postStatus"></p>
+</div>
+
+<h3>Community Feed</h3>
+<div id="feed">Loading posts...</div>
+
+</div>
+
+<script type="module">
+import {initializeApp} from
+"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+getAuth,createUserWithEmailAndPassword,
+signInWithEmailAndPassword,signInWithPopup,
+GoogleAuthProvider,signOut,onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+import {
+getFirestore,collection,addDoc,query,orderBy,
+onSnapshot,serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+apiKey: "AIzaSyDoL0xYbeKXVHfULtLcEWs39S4d_VqkhA",
+authDomain: "shah-community.firebaseapp.com",
+projectId: "shah-community",
+storageBucket: "shah-community.firebasestorage.app",
+messagingSenderId: "999020944282",
+appId: "1:999020944282:web:1904117007aff38306f823",
+measurementId: "G-JWTPH3KZHX"
+};
+
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getFirestore(app);
+const provider=new GoogleAuthProvider();
+
+const email=document.getElementById("email");
+const password=document.getElementById("password");
+const status=document.getElementById("status");
+const postStatus=document.getElementById("postStatus");
+
+document.getElementById("signupBtn").onclick=async()=>{
+try{
+ await createUserWithEmailAndPassword(auth,email.value,password.value);
+ status.textContent="Account created successfully ❤️";
+}catch(e){
+ status.textContent=e.message;
+}
+};
+
+document.getElementById("loginBtn").onclick=async()=>{
+try{
+ await signInWithEmailAndPassword(auth,email.value,password.value);
+ status.textContent="Login successful";
+}catch(e){
+ status.textContent=e.message;
+}
+};
+
+document.getElementById("googleBtn").onclick=async()=>{
+try{
+ await signInWithPopup(auth,provider);
+ status.textContent="Google login successful";
+}catch(e){
+ status.textContent=e.message;
+}
+};
+
+document.getElementById("logoutBtn").onclick=async()=>{
+await signOut(auth);
+};
+
+onAuthStateChanged(auth,user=>{
+const authBox=document.getElementById("authBox");
+const userBox=document.getElementById("userBox");
+const createBox=document.getElementById("createBox");
+
+if(user){
+ authBox.classList.add("hidden");
+ userBox.classList.remove("hidden");
+ createBox.classList.remove("hidden");
+ document.getElementById("welcome").textContent=
+ "Welcome "+(user.displayName||user.email)+" ❤️";
+}else{
+ authBox.classList.remove("hidden");
+ userBox.classList.add("hidden");
+ createBox.classList.add("hidden");
+}
+});
+
+document.getElementById("publishBtn").onclick=async()=>{
+const user=auth.currentUser;
+const text=document.getElementById("postText").value.trim();
+
+if(!user){
+ postStatus.textContent="Please login first";
+ return;
+}
+if(!text){
+ postStatus.textContent="Write something first";
+ return;
+}
+
+try{
+ await addDoc(collection(db,"posts"),{
+ content:text,
+ userId:user.uid,
+ author:user.displayName||user.email,
+ createdAt:serverTimestamp()
+ });
+ document.getElementById("postText").value="";
+ postStatus.textContent="Post published ❤️";
+}catch(e){
+ postStatus.textContent=e.message;
+}
+};
+
+const feed=document.getElementById("feed");
+const q=query(collection(db,"posts"),orderBy("createdAt","desc"));
+
+onSnapshot(q,snapshot=>{
+feed.innerHTML="";
+
+snapshot.forEach(doc=>{
+const post=doc.data();
+const div=document.createElement("div");
+div.className="post";
+
+const author=document.createElement("strong");
+author.textContent=post.author||"Community Member";
+
+const content=document.createElement("p");
+content.textContent=post.content||"";
+
+const date=document.createElement("small");
+date.textContent=post.createdAt?
+post.createdAt.toDate().toLocaleString():"Just now";
+
+div.append(author,content,date);
+feed.appendChild(div);
+});
+
+if(snapshot.empty){
+feed.textContent="No posts yet. Be the first to post ❤️";
+}
+},error=>{
+feed.textContent="Feed error: "+error.message;
+});
+</script>
+</body>
+</html>
